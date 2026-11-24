@@ -3,26 +3,32 @@
 # ==========================================
 # OMDUTA CLOUD - NEON PREMIUM VPS
 # Owner: @OmdutaMd
-# Telegram: https://t.me/OmdutaMd
 # ==========================================
 
 set +e
 
-P='\033[38;5;213m'   # Pink
-V='\033[38;5;183m'   # Violet
-Y='\033[38;5;222m'   # Yellow
-G='\033[38;5;114m'   # Green
-C='\033[38;5;117m'   # Cyan
-D='\033[38;5;245m'   # Dim
-W='\033[1;37m'       # White
-N='\033[0m'          # Reset
+P='\033[38;5;213m'
+V='\033[38;5;183m'
+Y='\033[38;5;222m'
+G='\033[38;5;114m'
+C='\033[38;5;117m'
+D='\033[38;5;245m'
+W='\033[1;37m'
+N='\033[0m'
 
 # ==========================================
 # SYSTEM INFORMATION
 # ==========================================
 
 HOST=$(hostname 2>/dev/null || echo "OMDUTA-VPS")
-OS=\( (. /etc/os-release 2>/dev/null; echo " \){PRETTY_NAME:-Ubuntu 22.04}")
+
+if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    OS="${PRETTY_NAME:-Ubuntu 22.04}"
+else
+    OS="Ubuntu 22.04"
+fi
+
 KERNEL=$(uname -r 2>/dev/null || echo "Unknown")
 ARCH=$(uname -m 2>/dev/null || echo "Unknown")
 CPU=$(nproc 2>/dev/null || echo "?")
@@ -34,7 +40,7 @@ RAM_USED=$(free -m 2>/dev/null | awk '/^Mem:/ {print $3}')
 RAM_TOTAL=${RAM_TOTAL:-0}
 RAM_USED=${RAM_USED:-0}
 
-if [[ "\( RAM_TOTAL" =\~ ^[0-9]+ \) ]] && (( RAM_TOTAL > 0 )); then
+if [ "$RAM_TOTAL" -gt 0 ] 2>/dev/null; then
     RAM_PERCENT=$((RAM_USED * 100 / RAM_TOTAL))
 else
     RAM_PERCENT=0
@@ -48,7 +54,6 @@ DISK_TOTAL=${DISK_TOTAL:-?}
 DISK_USED=${DISK_USED:-?}
 DISK_PERCENT=${DISK_PERCENT:-?}
 
-# IP (optional)
 IP=$(hostname -I 2>/dev/null | awk '{print $1}')
 IP=${IP:-"Private"}
 
@@ -68,15 +73,25 @@ bar() {
     local value=${1:-0}
     local width=18
     local filled=0
+    local i
 
-    [[ "\( value" =\~ ^[0-9]+ \) ]] || value=0
-    (( value > 100 )) && value=100
+    if ! [[ "\( value" =\~ ^[0-9]+ \) ]]; then
+        value=0
+    fi
+    if [ "$value" -gt 100 ]; then
+        value=100
+    fi
+
     filled=$((value * width / 100))
 
     printf "${G}"
-    for ((i=0; i<filled; i++)); do printf "█"; done
+    for ((i=0; i<filled; i++)); do
+        printf "█"
+    done
     printf "${D}"
-    for ((i=filled; i<width; i++)); do printf "░"; done
+    for ((i=filled; i<width; i++)); do
+        printf "░"
+    done
     printf "${N}"
 }
 
