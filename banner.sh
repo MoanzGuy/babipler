@@ -1,16 +1,6 @@
 #!/bin/bash
+C='\033[0;36m'; Y='\033[1;33m'; W='\033[1;37m'; G='\033[0;32m'; B='\033[0;34m'; N='\033[0m'
 
-# ─── OMDUTA CLOUD - Minimal Banner ───
-
-# Warna ANSI
-C='\033[0;36m'
-Y='\033[1;33m'
-W='\033[1;37m'
-G='\033[0;32m'
-B='\033[0;34m'
-N='\033[0m'
-
-# Data Sistem
 HOST=$(hostname 2>/dev/null || echo "omduta-vps")
 OS=$(awk -F'"' '/^PRETTY_NAME=/ {print $2}' /etc/os-release 2>/dev/null || echo "Ubuntu Linux")
 KERNEL=$(uname -r 2>/dev/null || echo "Unknown")
@@ -18,17 +8,8 @@ ARCH=$(uname -m 2>/dev/null || echo "Unknown")
 CPU=$(nproc 2>/dev/null || echo "?")
 UPTIME=$(uptime -p 2>/dev/null | sed 's/^up //' || echo "Unknown")
 
-# Fungsi pad dengan truncate
-pad() {
-    local txt="$1"
-    local max=30
-    if [ ${#txt} -gt $max ]; then
-        txt="${txt:0:$((max-2))}.."
-    fi
-    printf "%-${max}s" "$txt"
-}
+pad() { local t="$1"; [ ${#t} -gt 30 ] && t="${t:0:28}.."; printf "%-30s" "$t"; }
 
-# Cetak Banner
 echo ""
 echo -e "${C}╔══════════════════════════════════════════════════╗${N}"
 echo -e "${C}║${N}            ${Y}✦ WELCOME TO OMDUTA CLOUD ✦${N}            ${C}║${N}"
