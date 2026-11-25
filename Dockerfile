@@ -31,7 +31,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # ==========================================
-# 2. SSH CONFIGURATION
+# 2. SSH CONFIGURATION (FIX: Aktifkan Password Auth)
 # ==========================================
 RUN rm -f /etc/ssh/sshd_config.d/*.conf \
     && cat > /etc/ssh/sshd_config << 'EOF'
@@ -40,8 +40,8 @@ AddressFamily any
 ListenAddress 0.0.0.0
 PermitRootLogin yes
 PubkeyAuthentication yes
-PasswordAuthentication no
-KbdInteractiveAuthentication no
+PasswordAuthentication yes
+KbdInteractiveAuthentication yes
 AuthorizedKeysFile .ssh/authorized_keys
 UsePAM yes
 PrintMotd no
@@ -56,15 +56,13 @@ EOF
 # ==========================================
 # 3. COPY BANNER & SETUP
 # ==========================================
-# Copy banner.sh dari folder lokal ke dalam container
 COPY banner.sh /usr/local/bin/vps
 
-# Beri permission execute
 RUN chmod 755 /usr/local/bin/vps \
     && echo 'if [ -t 1 ]; then /usr/local/bin/vps; fi' >> /root/.bashrc
 
 # ==========================================
-# 4. STARTUP SCRIPT
+# 4. STARTUP SCRIPT (FIX: Support ROOT_PASSWORD dari Bot)
 # ==========================================
 RUN cat > /usr/local/bin/start-vps << 'EOF'
 #!/bin/bash
@@ -74,37 +72,41 @@ echo "========================================"
 echo " OMDUTA CLOUD VPS STARTING"
 echo "========================================"
 
-# Siapkan direktori SSH
 mkdir -p /run/sshd /root/.ssh
 chmod 700 /root/.ssh
 touch /root/.ssh/authorized_keys
 chmod 600 /root/.ssh/authorized_keys
 
-# Injeksi SSH Public Key dari Environment Variable Railway
-if [ -n "$SSH_PUBLIC_KEY" ]; then
-    echo "$SSH_PUBLIC_KEY" > /root/.ssh/authorized_keys
-    chmod 600 /root/.ssh/authorized_keys
-    echo "[+] SSH Public Key injected successfully"
+# 1. PRIORITAS: Set Password jika Bot mengirim ROOT_PASSWORD
+if [ -n "$ROOT_PASSWORD" ]; then
+    echo "root:$ROOT_PASSWORD" | chpasswd
+    echo "[+] Root password berhasil diatur dari Environment Variable!"
 else
-    echo "[!] WARNING: SSH_PUBLIC_KEY tidak diset di Environment Variable!"
-    echo "[!] User tidak akan bisa login tanpa SSH Key."
+    echo "[!] WARNING: ROOT_PASSWORD tidak ditemukan. Login mungkin gagal."
+fi
+
+# 2. OPSIONAL: Injeksi SSH Public Key jika ada
+if [ -n "$SSH_PUBLIC_KEY" ]; then
+    echo "$SSH_PUBLIC_KEY" >> /root/.ssh/authorized_keys
+    chmod 600 /root/.ssh/authorized_keys
+    echo "[+] SSH Public Key berhasil ditambahkan."
 fi
 
 # Generate host keys jika belum ada
 ssh-keygen -A
 
-# Test konfigurasi SSH sebelum dijalankan
+# Test konfigurasi SSH
 if /usr/sbin/sshd -t; then
     echo "[+] SSH Configuration Valid"
 else
-    echo "[-] SSH Configuration Invalid! Cek sshd_config."
+    echo "[-] SSH Configuration Invalid!"
     exit 1
 fi
 
 echo "[+] Listening on port 2222"
 echo "[+] Starting SSH Daemon..."
 
-# Jalankan SSH Daemon di foreground
+# Jalankan SSH Daemon
 exec /usr/sbin/sshd -D -e
 EOF
 
