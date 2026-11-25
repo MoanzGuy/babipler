@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN rm -f /etc/ssh/sshd_config.d/*.conf \
     && cat > /etc/ssh/sshd_config << 'EOF'
-Port 2222
+Port 22
 PermitRootLogin yes
 PasswordAuthentication yes
 KbdInteractiveAuthentication yes
@@ -44,5 +44,5 @@ EOF
 RUN chmod 755 /usr/local/bin/start-vps
 
 WORKDIR /root
-EXPOSE 2222
+EXPOSE 22
 CMD ["/usr/local/bin/start-vps"]
