@@ -1,39 +1,31 @@
 FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
-ENV ROOT_PASSWORD=changeme
+ENV LANG=C.UTF-8
 
-RUN apt-get update -y && \
-    apt-get install -y \
-        openssh-server \
-        curl \
-        wget \
-        nano \
-        net-tools \
-        iputils-ping \
-        htop \
-        bash && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    openssh-server bash ca-certificates curl wget nano \
+    iproute2 net-tools procps \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN mkdir -p /var/run/sshd /root/.ssh
+RUN mkdir -p /run/sshd /root/.ssh /etc/profile.d \
+    && chmod 700 /root/.ssh
 
-RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
-    sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
-    sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config && \
-    sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config && \
-    sed -i 's/#Port 22/Port 22/' /etc/ssh/sshd_config && \
-    echo "Port 22" >> /etc/ssh/sshd_config && \
-    echo "UsePAM no" >> /etc/ssh/sshd_config && \
-    echo "X11Forwarding no" >> /etc/ssh/sshd_config && \
-    echo "PrintMotd yes" >> /etc/ssh/sshd_config
+RUN printf '%s\n' \
+    'Port 22' \
+    'PermitRootLogin yes' \
+    'PasswordAuthentication yes' \
+    'KbdInteractiveAuthentication no' \
+    'UsePAM yes' \
+    'PrintMotd no' \
+    'Subsystem sftp /usr/lib/openssh/sftp-server' \
+    > /etc/ssh/sshd_config
 
-COPY banner.sh /etc/banner.sh
-RUN chmod +x /etc/banner.sh && \
-    echo "Banner /etc/banner.sh" >> /etc/ssh/sshd_config
-
+COPY banner.sh /etc/profile.d/00-omduta-banner.sh
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+
+RUN chmod 644 /etc/profile.d/00-omduta-banner.sh \
+    && chmod 755 /entrypoint.sh
 
 EXPOSE 22
 
