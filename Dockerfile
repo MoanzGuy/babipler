@@ -5,7 +5,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Asia/Jakarta
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    openssh-server curl procps iproute2 net-tools dnsutils \
+    openssh-server curl procps iproute2 net-tools dnsutils sudo nano vim git \
     && mkdir -p /run/sshd /root/.ssh \
     && rm -rf /var/lib/apt/lists/*
 
@@ -23,7 +23,7 @@ COPY banner.sh /usr/local/bin/vps
 RUN chmod 755 /usr/local/bin/vps \
     && echo 'if [ -t 1 ]; then /usr/local/bin/vps; fi' >> /root/.bashrc
 
-# ✅ STARTUP: set password DARI ENV ROOT_PASSWORD (bukan build time!)
+# ===== INI KUNCI UTAMA: BACA ROOT_PASSWORD DARI BOT =====
 RUN cat > /usr/local/bin/start-vps << 'EOF'
 #!/bin/bash
 set -e
@@ -32,10 +32,10 @@ chmod 700 /root/.ssh
 
 if [ -n "$ROOT_PASSWORD" ]; then
     echo "root:$ROOT_PASSWORD" | chpasswd
-    echo "[+] Password root diset dari ROOT_PASSWORD env"
+    echo "[+] Password root di-set dari ROOT_PASSWORD (bot)"
 else
     echo 'root:Omduta123' | chpasswd
-    echo "[!] ROOT_PASSWORD kosong, pakai default Omduta123"
+    echo "[!] ROOT_PASSWORD kosong -> pakai fallback Omduta123"
 fi
 
 ssh-keygen -A
