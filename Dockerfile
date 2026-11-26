@@ -1,50 +1,40 @@
-ARG BASE_IMAGE=ubuntu:22.04
-FROM ${BASE_IMAGE}
+FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
-ENV TZ=Asia/Jakarta
+ENV ROOT_PASSWORD=changeme
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    openssh-server curl procps iproute2 net-tools dnsutils sudo nano vim git \
-    && mkdir -p /run/sshd /root/.ssh \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update -y && \
+    apt-get install -y \
+        openssh-server \
+        curl \
+        wget \
+        nano \
+        net-tools \
+        iputils-ping \
+        htop \
+        bash && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
-# Set Port ke 2222
-RUN rm -f /etc/ssh/sshd_config.d/*.conf \
-    && cat > /etc/ssh/sshd_config << 'EOF'
-Port 2222
-PermitRootLogin yes
-PasswordAuthentication yes
-KbdInteractiveAuthentication yes
-UsePAM yes
-PrintMotd no
-EOF
+RUN mkdir -p /var/run/sshd /root/.ssh
 
-COPY banner.sh /usr/local/bin/vps
-RUN chmod 755 /usr/local/bin/vps \
-    && echo 'if [ -t 1 ]; then /usr/local/bin/vps; fi' >> /root/.bashrc
+RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
+    sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
+    sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config && \
+    sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config && \
+    sed -i 's/#Port 22/Port 22/' /etc/ssh/sshd_config && \
+    echo "Port 22" >> /etc/ssh/sshd_config && \
+    echo "UsePAM no" >> /etc/ssh/sshd_config && \
+    echo "X11Forwarding no" >> /etc/ssh/sshd_config && \
+    echo "PrintMotd yes" >> /etc/ssh/sshd_config
 
-# Script Startup: Baca password dari bot, jika tidak ada pakai fallback
-RUN cat > /usr/local/bin/start-vps << 'EOF'
-#!/bin/bash
-set -e
-mkdir -p /run/sshd /root/.ssh
-chmod 700 /root/.ssh
+COPY banner.sh /etc/banner.sh
+RUN chmod +x /etc/banner.sh && \
+    echo "Banner /etc/banner.sh" >> /etc/ssh/sshd_config
 
-if [ -n "$ROOT_PASSWORD" ]; then
-    echo "root:$ROOT_PASSWORD" | chpasswd
-    echo "[+] SUKSES: Password root di-set dari bot"
-else
-    echo "root:Omduta123" | chpasswd
-    echo "[!] PERINGATAN: ROOT_PASSWORD kosong, pakai fallback: Omduta123"
-fi
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
-ssh-keygen -A
-echo "[+] Starting SSH Daemon on port 2222..."
-exec /usr/sbin/sshd -D -e
-EOF
-RUN chmod +x /usr/local/bin/start-vps
+EXPOSE 22
 
-WORKDIR /root
-EXPOSE 2222
-CMD ["/usr/local/bin/start-vps"]
+CMD ["/entrypoint.sh"]
