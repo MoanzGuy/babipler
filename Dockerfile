@@ -9,9 +9,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && mkdir -p /run/sshd /root/.ssh \
     && rm -rf /var/lib/apt/lists/*
 
+# Set Port ke 2222
 RUN rm -f /etc/ssh/sshd_config.d/*.conf \
     && cat > /etc/ssh/sshd_config << 'EOF'
-Port 22
+Port 2222
 PermitRootLogin yes
 PasswordAuthentication yes
 KbdInteractiveAuthentication yes
@@ -23,7 +24,7 @@ COPY banner.sh /usr/local/bin/vps
 RUN chmod 755 /usr/local/bin/vps \
     && echo 'if [ -t 1 ]; then /usr/local/bin/vps; fi' >> /root/.bashrc
 
-# ===== INI KUNCI UTAMA: BACA ROOT_PASSWORD DARI BOT =====
+# Script Startup: Baca password dari bot, jika tidak ada pakai fallback
 RUN cat > /usr/local/bin/start-vps << 'EOF'
 #!/bin/bash
 set -e
@@ -32,17 +33,18 @@ chmod 700 /root/.ssh
 
 if [ -n "$ROOT_PASSWORD" ]; then
     echo "root:$ROOT_PASSWORD" | chpasswd
-    echo "[+] Password root di-set dari ROOT_PASSWORD (bot)"
+    echo "[+] SUKSES: Password root di-set dari bot"
 else
-    echo 'root:Omduta123' | chpasswd
-    echo "[!] ROOT_PASSWORD kosong -> pakai fallback Omduta123"
+    echo "root:Omduta123" | chpasswd
+    echo "[!] PERINGATAN: ROOT_PASSWORD kosong, pakai fallback: Omduta123"
 fi
 
 ssh-keygen -A
+echo "[+] Starting SSH Daemon on port 2222..."
 exec /usr/sbin/sshd -D -e
 EOF
-RUN chmod 755 /usr/local/bin/start-vps
+RUN chmod +x /usr/local/bin/start-vps
 
 WORKDIR /root
-EXPOSE 22
+EXPOSE 2222
 CMD ["/usr/local/bin/start-vps"]
